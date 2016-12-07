@@ -8,8 +8,8 @@ function [J grad] = nnCostFunction(nn_params, ...
 %   [J grad] = NNCOSTFUNCTON(nn_params, hidden_layer_size, num_labels, ...
 %   X, y, lambda) computes the cost and gradient of the neural network. The
 %   parameters for the neural network are "unrolled" into the vector
-%   nn_params and need to be converted back into the weight matrices. 
-% 
+%   nn_params and need to be converted back into the weight matrices.
+%
 %   The returned parameter grad should be a "unrolled" vector of the
 %   partial derivatives of the neural network.
 %
@@ -24,8 +24,8 @@ Theta2 = reshape(nn_params((1 + (hidden_layer_size * (input_layer_size + 1))):en
 
 % Setup some useful variables
 m = size(X, 1);
-         
-% You need to return the following variables correctly 
+
+% You need to return the following variables correctly
 J = 0;
 Theta1_grad = zeros(size(Theta1));
 Theta2_grad = zeros(size(Theta2));
@@ -46,12 +46,12 @@ Theta2_grad = zeros(size(Theta2));
 %         that your implementation is correct by running checkNNGradients
 %
 %         Note: The vector y passed into the function is a vector of labels
-%               containing values from 1..K. You need to map this vector into a 
+%               containing values from 1..K. You need to map this vector into a
 %               binary vector of 1's and 0's to be used with the neural network
 %               cost function.
 %
 %         Hint: We recommend implementing backpropagation using a for-loop
-%               over the training examples if you are implementing it for the 
+%               over the training examples if you are implementing it for the
 %               first time.
 %
 % Part 3: Implement regularization with the cost function and gradients.
@@ -64,20 +64,42 @@ Theta2_grad = zeros(size(Theta2));
 
 
 
+% 1. Feed-forward to compute h = a3.
+a1 = [ones(1, m); X'];  % 401 x m
+z2 = Theta1 * a1;
+a2 = [ones(1, m); sigmoid(z2)];  % 26 x m
+a3 = sigmoid(Theta2 * a2);  % 10 x m
+
+% Explode y into 10 values with Y[i] := i == y.
+Y = zeros(num_labels, m);
+Y(sub2ind(size(Y), y', 1:m)) = 1;
+
+% Compute the non-regularized error. Fully vectorized, at the expense of
+% having an expanded Y in memory
+J = (1/m) * sum(sum(-Y .* log(a3) - (1 - Y) .* log(1 - a3)));
+
+% Add regularized error. Drop the bias terms in the 1st columns.
+J = J + (lambda / (2*m)) * sum(sum(Theta1(:, 2:end) .^ 2));
+J = J + (lambda / (2*m)) * sum(sum(Theta2(:, 2:end) .^ 2));
 
 
+% 2. Backpropagate to get gradient information.
+d3 = a3 - Y;  % 10 x m
+d2 = (Theta2' * d3) .* [ones(1, m); sigmoidGradient(z2)];  % 26 x m
+
+% Vectorized ftw:
+Theta1_grad = (1/m) * d2(2:end, :) * a1';
+Theta2_grad = (1/m) * d3 * a2';
 
 
+% Add gradient regularization.
+Theta2_grad = Theta2_grad + ...
+              (lambda / m) * ([zeros(size(Theta2, 1), 1), Theta2(:, 2:end)]);
+Theta1_grad = Theta1_grad + ...
+              (lambda / m) * ([zeros(size(Theta1, 1), 1), Theta1(:, 2:end)]);
 
-
-
-
-
-
-
-
-
-
+% Unroll gradients.
+grad = [Theta1_grad(:) ; Theta2_grad(:)];
 
 
 % -------------------------------------------------------------
